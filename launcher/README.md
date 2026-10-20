@@ -9,8 +9,12 @@ Plain Java, no AndroidX, no Gradle: about 90 KB.
   in a colour sampled from its banner.
 - Press **Down** for the full app grid (five columns). One translucent glass highlight springs from
   tile to tile; the focused tile grows and shows its name.
-- Frosted pills top right: **Inputs** (HDMI/AV inputs the box reports, live-TV apps, and the stock
-  launcher), **Wi-Fi** (shows the network name) and **Settings**.
+- Frosted pills top right:
+  - **Live TV**: a menu of the live-TV apps (first one focused) plus the stock launcher, after any
+    HDMI/AV inputs the device reports. A set-top box has none: its HDMI port is an output.
+  - **Audio**: names the current output (a Bluetooth speaker or headphones by name, "Soundbar"
+    over ARC, else "TV Speakers"), updated as devices connect; opens the Bluetooth panel.
+  - **Wi-Fi** (shows the network name) and **Settings**.
 - Deterministic D-pad: Up/Down move exactly one row, Up from the dock goes to the top bar, row ends
   don't wrap, and the last focused tile is remembered.
 - **Black clock** screensaver: a dim clock and date that move every minute against burn-in.
@@ -40,7 +44,8 @@ Edit [`res/values/config.xml`](res/values/config.xml) and rebuild:
 | Setting | What it does |
 |---|---|
 | `dock_apps` | Package names for the dock, left to right (up to five) |
-| `live_tv_apps` | Apps listed under the Inputs pill |
+| `live_tv_apps` | Apps listed under the Live TV pill |
+| `audio_settings_activity` | Screen the audio pill opens; empty for the standard Bluetooth settings |
 | `hidden_apps` | Apps never shown in the grid |
 | `greeting_name` | Appended to the greeting ("Good evening, Name") |
 | `wallpaper_dim_percent` | How much to darken the optional wallpaper |

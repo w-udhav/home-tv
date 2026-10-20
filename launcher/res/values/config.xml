@@ -9,12 +9,16 @@
         <item>com.sonyliv</item>
     </string-array>
 
-    <!-- Listed under the Inputs pill, after any HDMI/AV inputs the box reports. -->
+    <!-- Listed under the Live TV pill, after any HDMI/AV inputs the box reports. -->
     <string-array name="live_tv_apps">
         <item>com.fastway.fastwaylivetv</item>
         <item>com.showtimeapp</item>
         <item>com.hinettvin</item>
     </string-array>
+
+    <!-- Opened by the audio pill. This box's Settings has no standard Bluetooth screen, so name its
+         panel; leave empty to use the standard one. -->
+    <string name="audio_settings_activity">com.android.tv.settings/.sei.accessories.AccessoriesActivity</string>
 
     <!-- Apps never shown in the grid. -->
     <string-array name="hidden_apps">

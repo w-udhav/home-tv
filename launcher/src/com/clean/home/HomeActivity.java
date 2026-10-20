@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -21,6 +22,9 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -31,6 +35,7 @@ import android.net.wifi.WifiInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -70,7 +75,7 @@ public class HomeActivity extends Activity {
     private Typeface thin, light, regular, medium;
     private FrameLayout content, tileLayer;
     private Glass glass;
-    private TextView greeting, dockTitle, wifiPill;
+    private TextView greeting, dockTitle, wifiPill, audioPill;
     private View glow;
     private GradientDrawable glowShape;
     private LinearLayout pillBar, menu;
@@ -84,6 +89,7 @@ public class HomeActivity extends Activity {
     private boolean appsDirty, resumed;
     private SharedPreferences prefs;
     private ConnectivityManager cm;
+    private AudioManager audio;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -138,6 +144,9 @@ public class HomeActivity extends Activity {
 
         cm = getSystemService(ConnectivityManager.class);
         cm.registerDefaultNetworkCallback(netCallback);
+
+        audio = getSystemService(AudioManager.class);
+        audio.registerAudioDeviceCallback(audioCallback, null);
     }
 
     @Override
@@ -145,6 +154,7 @@ public class HomeActivity extends Activity {
         unregisterReceiver(packageReceiver);
         unregisterReceiver(tickReceiver);
         cm.unregisterNetworkCallback(netCallback);
+        audio.unregisterAudioDeviceCallback(audioCallback);
         super.onDestroy();
     }
 
@@ -226,8 +236,10 @@ public class HomeActivity extends Activity {
         lp.topMargin = px(44);
         lp.rightMargin = px(SIDE);
         content.addView(pillBar, lp);
-        pills.add(pill("Inputs", null));
-        wifiPill = pill("Wi-Fi", new WifiIcon(dp));
+        pills.add(pill("Live TV", new PillIcon(PillIcon.TV, dp)));
+        audioPill = pill("TV Speakers", new PillIcon(PillIcon.SPEAKER, dp));
+        pills.add(audioPill);
+        wifiPill = pill("Wi-Fi", new PillIcon(PillIcon.WIFI, dp));
         pills.add(wifiPill);
         pills.add(pill("Settings", null));
         pillBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
@@ -240,6 +252,9 @@ public class HomeActivity extends Activity {
         t.setText(label);
         t.setGravity(Gravity.CENTER_VERTICAL);
         t.setPadding(px(18), 0, px(18), 0);
+        t.setSingleLine();
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setMaxWidth(px(176));    // long Wi-Fi or speaker names must not push into the clock
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0x1FFFFFFF);
         bg.setStroke(px(1), 0x24FFFFFF);
@@ -500,8 +515,27 @@ public class HomeActivity extends Activity {
 
     private void activatePill(int i) {
         if (i == 0) openMenu();
-        else if (i == 1) start(new Intent(Settings.ACTION_WIFI_SETTINGS));
+        else if (i == 1) openAudioSettings();
+        else if (i == 2) start(new Intent(Settings.ACTION_WIFI_SETTINGS));
         else start(new Intent(Settings.ACTION_SETTINGS));
+    }
+
+    /** The firmware's Bluetooth panel if config names one, else the standard Bluetooth or Settings screen. */
+    private void openAudioSettings() {
+        ComponentName panel = ComponentName.unflattenFromString(getString(R.string.audio_settings_activity));
+        Intent[] tries = {
+                panel == null ? null : new Intent().setComponent(panel),
+                new Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
+                new Intent(Settings.ACTION_SETTINGS)};
+        for (Intent i : tries) {
+            if (i == null) continue;
+            try {
+                startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return;
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+                // try the next screen
+            }
+        }
     }
 
     private void launch(App a) {
@@ -551,8 +585,7 @@ public class HomeActivity extends Activity {
             start(s);
         });
 
-        TextView inputs = pills.get(0);
-        RectF anchor = rectOf(inputs);
+        RectF anchor = rectOf(pills.get(0));
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) menu.getLayoutParams();
         lp.leftMargin = (int) Math.min(anchor.left, px(960 - SIDE - 280));
         lp.topMargin = (int) anchor.bottom + px(10);
@@ -596,6 +629,37 @@ public class HomeActivity extends Activity {
         String name = getString(R.string.greeting_name).trim();
         greeting.setText(name.isEmpty() ? g : g + ", " + name);
     }
+
+    /** Names the audio output: a Bluetooth speaker or headphones by name, else ARC or the TV. */
+    private void updateAudioLabel() {
+        String label = "TV Speakers";
+        for (AudioDeviceInfo d : audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+            int t = d.getType();
+            boolean wireless = t == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || t == AudioDeviceInfo.TYPE_BLE_HEADSET
+                    || t == AudioDeviceInfo.TYPE_BLE_SPEAKER;
+            boolean wired = t == AudioDeviceInfo.TYPE_USB_HEADSET || t == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+                    || t == AudioDeviceInfo.TYPE_WIRED_HEADSET;
+            if (wireless || wired) {
+                CharSequence name = d.getProductName();
+                label = TextUtils.isEmpty(name) ? (wireless ? "Bluetooth" : "Headphones") : name.toString();
+                break;   // a connected speaker or headset takes the sound over the TV
+            }
+            if (t == AudioDeviceInfo.TYPE_HDMI_ARC || t == AudioDeviceInfo.TYPE_HDMI_EARC) label = "Soundbar";
+        }
+        if (!label.contentEquals(audioPill.getText())) audioPill.setText(label);
+    }
+
+    private final AudioDeviceCallback audioCallback = new AudioDeviceCallback() {
+        @Override
+        public void onAudioDevicesAdded(AudioDeviceInfo[] added) {
+            updateAudioLabel();
+        }
+
+        @Override
+        public void onAudioDevicesRemoved(AudioDeviceInfo[] removed) {
+            updateAudioLabel();
+        }
+    };
 
     private void setNetworkLabel(String s) {
         if (!s.contentEquals(wifiPill.getText())) wifiPill.setText(s);
@@ -678,30 +742,57 @@ public class HomeActivity extends Activity {
         return lp;
     }
 
-    /** Three arcs and a dot. */
-    private static final class WifiIcon extends Drawable {
+    /** Pill icons drawn to match the text: Wi-Fi arcs, a TV, a speaker. */
+    private static final class PillIcon extends Drawable {
+        static final int WIFI = 0, TV = 1, SPEAKER = 2;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int kind;
         private final float dp;
 
-        WifiIcon(float dp) {
+        PillIcon(int kind, float dp) {
+            this.kind = kind;
             this.dp = dp;
             p.setColor(0xEBFFFFFF);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
             p.setStrokeWidth(1.8f * dp);
             setBounds(0, 0, Math.round(16 * dp), Math.round(14 * dp));
         }
 
         @Override
         public void draw(Canvas c) {
-            float cx = getBounds().width() / 2f, cy = getBounds().height() - 1.5f * dp;
-            for (int i = 1; i <= 3; i++) {
-                float r = i * 4f * dp;
-                c.drawArc(cx - r, cy - r, cx + r, cy + r, 225, 90, false, p);
+            float w = getBounds().width(), h = getBounds().height();
+            if (kind == WIFI) {
+                float cx = w / 2f, cy = h - 1.5f * dp;
+                for (int i = 1; i <= 3; i++) {
+                    float r = i * 4f * dp;
+                    c.drawArc(cx - r, cy - r, cx + r, cy + r, 225, 90, false, p);
+                }
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(cx, cy, 1.4f * dp, p);
+                p.setStyle(Paint.Style.STROKE);
+            } else if (kind == TV) {
+                c.drawRoundRect(1 * dp, 1 * dp, w - 1 * dp, h - 4 * dp, 2 * dp, 2 * dp, p);
+                c.drawLine(w * .3f, h - 1 * dp, w * .7f, h - 1 * dp, p);
+            } else {
+                android.graphics.Path cone = new android.graphics.Path();
+                cone.moveTo(1.5f * dp, h * .36f);
+                cone.lineTo(4.5f * dp, h * .36f);
+                cone.lineTo(8.5f * dp, 1.5f * dp);
+                cone.lineTo(8.5f * dp, h - 1.5f * dp);
+                cone.lineTo(4.5f * dp, h * .64f);
+                cone.lineTo(1.5f * dp, h * .64f);
+                cone.close();
+                p.setStyle(Paint.Style.FILL);
+                c.drawPath(cone, p);
+                p.setStyle(Paint.Style.STROKE);
+                float cx = 8.5f * dp, cy = h / 2f;
+                for (int i = 1; i <= 2; i++) {
+                    float r = (2.5f + i * 2.5f) * dp;
+                    c.drawArc(cx - r, cy - r, cx + r, cy + r, -45, 90, false, p);
+                }
             }
-            p.setStyle(Paint.Style.FILL);
-            c.drawCircle(cx, cy, 1.4f * dp, p);
-            p.setStyle(Paint.Style.STROKE);
         }
 
         @Override public void setAlpha(int a) { }
