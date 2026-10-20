@@ -26,6 +26,7 @@ final class Tile extends FrameLayout {
     private final int bannerHeight;
     private TextView name;
     private float lift;
+    private View shine;
 
     Tile(Context c, App app, int w, int h, float dp, Typeface face) {
         super(c);
@@ -45,6 +46,7 @@ final class Tile extends FrameLayout {
             banner.setPadding((int) (20 * dp), (int) (16 * dp), (int) (20 * dp), (int) (40 * dp));
         }
         float radius = 16 * dp;
+        this.lift = 18 * dp;
         banner.setOutlineProvider(new ViewOutlineProvider() {
             @Override
             public void getOutline(View v, Outline o) {
@@ -52,14 +54,21 @@ final class Tile extends FrameLayout {
             }
         });
         banner.setClipToOutline(true);
-        // Gloss: light from above, and a hairline rim, like a tvOS app icon.
+        // Gloss: soft light from above, like a tvOS app icon. No rim: icons are content, not glass.
         GradientDrawable gloss = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0x26FFFFFF, 0x00FFFFFF, 0x00000000});
         gloss.setCornerRadius(radius);
-        gloss.setStroke(Math.max(1, Math.round(dp)), 0x1FFFFFFF);
         banner.setForeground(gloss);
-        this.lift = 18 * dp;
         addView(banner, new LayoutParams(w, h));
+        // Focus is shown on the icon itself, as on tvOS: it lifts and catches light. No ring.
+        shine = new View(c);
+        GradientDrawable light = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0x40FFFFFF, 0x0DFFFFFF, 0x00FFFFFF});
+        light.setCornerRadius(radius);
+        shine.setBackground(light);
+        shine.setAlpha(0f);
+        shine.setTranslationZ(lift + 1);    // drawn above the lifted banner
+        addView(shine, new LayoutParams(w, h));
         if (!app.isBanner) {
             // Icon-only apps get their name printed on the plate, like a banner would.
             TextView name = new TextView(c);
@@ -102,6 +111,8 @@ final class Tile extends FrameLayout {
             name.animate().scaleX(s).scaleY(s).translationY(focused ? shift : 0)
                     .setDuration(240).setInterpolator(ease).start();
         }
+        shine.animate().scaleX(s).scaleY(s).alpha(focused ? 1f : 0f)
+                .setDuration(240).setInterpolator(ease).start();
         label.animate().alpha(focused ? 1f : 0f)
                 .translationY(focused ? bannerHeight * (FOCUS_SCALE - 1) / 2 : 0)
                 .setDuration(240).setInterpolator(ease).start();

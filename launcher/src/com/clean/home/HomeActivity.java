@@ -287,8 +287,7 @@ public class HomeActivity extends Activity {
             t.setCompoundDrawablePadding(px(8));
             st.icon.setColor(0xFF000000);
         } else {
-            bg.setColor(0x26FFFFFF);
-            bg.setStroke(px(1), 0x3DFFFFFF);
+            bg.setColor(0x2EFFFFFF);    // glass fill only; Apple's glass buttons have no ring
             t.setText("");
             int side = (44 - 16) / 2;
             t.setPadding(px(side), 0, px(side), 0);
@@ -497,7 +496,7 @@ public class HomeActivity extends Activity {
         openPill(-1);
         sheet.animate().alpha(1f).setDuration(300).start();
         glow.animate().alpha(1f).setDuration(300).start();
-        glass.moveTo(tileRect(t), px(15), animate);
+        glass.hide();
     }
 
     /** The large name above the dock, with its glow coloured from the app's banner. */
@@ -527,7 +526,7 @@ public class HomeActivity extends Activity {
         openPill(-1);
         sheet.animate().alpha(0f).setDuration(300).start();   // its bottom edge would hang over the grid
         glow.animate().alpha(0f).setDuration(300).start();
-        glass.moveTo(tileRect(t), px(15), animate);
+        glass.hide();
     }
 
     private void setFocusedTile(Tile t) {
@@ -548,12 +547,6 @@ public class HomeActivity extends Activity {
         }
     }
 
-    private RectF tileRect(Tile t) {
-        RectF r = rectOf(t.banner);
-        float grow = (Tile.FOCUS_SCALE - 1) / 2;
-        r.inset(-r.width() * grow - px(5), -r.height() * grow - px(5));
-        return r;
-    }
 
     /** Bounds of a view in content coordinates; positions are known from layout, not from animation state. */
     private RectF rectOf(View v) {
@@ -870,7 +863,7 @@ public class HomeActivity extends Activity {
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
-    /** Frosted sheet: a faint vertical fill and a rim that is brightest along the top edge. */
+    /** Frosted sheet: a faint vertical fill and a hairline of light along the top edge. */
     private static final class GlassSheet extends Drawable {
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -884,15 +877,15 @@ public class HomeActivity extends Activity {
             this.radius = radiusDp * dp;
             base.setColor(baseColor);
             rim.setStyle(Paint.Style.STROKE);
-            rim.setStrokeWidth(1.2f * dp);
+            rim.setStrokeWidth(Math.max(1f, Math.round(dp * .5f)));   // one physical pixel
         }
 
         @Override
         protected void onBoundsChange(android.graphics.Rect b) {
             fill.setShader(new LinearGradient(0, b.top, 0, b.top + 200 * dp,
                     new int[]{0x2BFFFFFF, 0x14FFFFFF, 0x0DFFFFFF}, new float[]{0f, .45f, 1f}, Shader.TileMode.CLAMP));
-            rim.setShader(new LinearGradient(0, b.top, 0, b.top + 90 * dp,
-                    0x66FFFFFF, 0x0FFFFFFF, Shader.TileMode.CLAMP));
+            rim.setShader(new LinearGradient(0, b.top, 0, b.top + 40 * dp,
+                    0x33FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));   // light on the top edge only
         }
 
         @Override

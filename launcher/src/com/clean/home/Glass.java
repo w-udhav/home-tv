@@ -21,7 +21,6 @@ final class Glass extends View {
     private float radius, fromRadius, toRadius;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix sheenMatrix = new Matrix();
     private final LinearGradient sheenShader =
             new LinearGradient(0, 0, 0, 1, 0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
@@ -31,9 +30,6 @@ final class Glass extends View {
         super(c);
         fill.setColor(0x1CFFFFFF);
         sheen.setShader(sheenShader);
-        stroke.setStyle(Paint.Style.STROKE);
-        stroke.setStrokeWidth(1.5f * dp);
-        stroke.setColor(0x66FFFFFF);
     }
 
     /** Fades out; the next moveTo brings it back from where it was. */
@@ -79,6 +75,5 @@ final class Glass extends View {
         sheenMatrix.postTranslate(0, cur.top);
         sheenShader.setLocalMatrix(sheenMatrix);
         canvas.drawRoundRect(cur, radius, radius, sheen);
-        canvas.drawRoundRect(cur, radius, radius, stroke);
     }
 }
