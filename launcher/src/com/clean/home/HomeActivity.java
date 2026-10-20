@@ -95,10 +95,11 @@ public class HomeActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         dp = getResources().getDisplayMetrics().density;
-        thin = font(200);
-        light = font(300);
-        regular = font(400);
-        medium = font(500);
+        // Optical size follows the text size: display shapes for the clock, text shapes for labels.
+        thin = font(250, 72);
+        light = font(330, 40);
+        regular = font(400, 16);
+        medium = font(520, 15);
         prefs = getSharedPreferences("focus", MODE_PRIVATE);
         zone = prefs.getInt("zone", DOCK);
         if (zone == MENU) zone = TOP;
@@ -417,6 +418,8 @@ public class HomeActivity extends Activity {
     }
 
     private void restoreFocus(boolean animate) {
+        // Starting on the top bar or in the grid still names the remembered dock app.
+        if (!dockTiles.isEmpty()) showDockTitle(dockTiles.get(Math.min(dockIdx, dockTiles.size() - 1)).app, false);
         if (zone == GRID && !gridTiles.isEmpty()) focusGrid(Math.min(gridIdx, gridTiles.size() - 1), animate);
         else if (zone != TOP && !dockTiles.isEmpty()) focusDock(Math.min(dockIdx, dockTiles.size() - 1), animate);
         else focusTop(Math.min(topIdx, pills.size() - 1), animate);
@@ -444,18 +447,21 @@ public class HomeActivity extends Activity {
         Tile t = dockTiles.get(i);
         setFocusedTile(t);
         scrollTo(0, animate);
-        App a = t.app;
-        if (!a.label.contentEquals(dockTitle.getText())) {
-            dockTitle.setText(a.label);
-            dockTitle.setShadowLayer(px(14), 0, 0, (a.color & 0x00FFFFFF) | 0x99000000);
-            glowShape.setColors(new int[]{(a.color & 0x00FFFFFF) | 0x38000000, 0x00000000});
-            if (animate) {
-                dockTitle.setAlpha(0.3f);
-                dockTitle.animate().alpha(1f).setDuration(260).start();
-            }
-        }
+        showDockTitle(t.app, animate);
         glow.animate().alpha(1f).setDuration(300).start();
         glass.moveTo(tileRect(t), px(15), animate);
+    }
+
+    /** The large name above the dock, with its glow coloured from the app's banner. */
+    private void showDockTitle(App a, boolean animate) {
+        if (a.label.contentEquals(dockTitle.getText())) return;
+        dockTitle.setText(a.label);
+        dockTitle.setShadowLayer(px(14), 0, 0, (a.color & 0x00FFFFFF) | 0x99000000);
+        glowShape.setColors(new int[]{(a.color & 0x00FFFFFF) | 0x38000000, 0x00000000});
+        if (animate) {
+            dockTitle.setAlpha(0.3f);
+            dockTitle.animate().alpha(1f).setDuration(260).start();
+        }
     }
 
     private void focusGrid(int i) {
@@ -710,10 +716,10 @@ public class HomeActivity extends Activity {
 
     // --------------------------------------------------------------- helpers
 
-    private Typeface font(int weight) {
+    private Typeface font(int weight, int opticalSize) {
         try {
-            return new Typeface.Builder(getAssets(), "Outfit.ttf")
-                    .setFontVariationSettings("'wght' " + weight).build();
+            return new Typeface.Builder(getAssets(), "GoogleSansFlex-Latin.ttf")
+                    .setFontVariationSettings("'wght' " + weight + ", 'opsz' " + opticalSize).build();
         } catch (RuntimeException ex) {
             return Typeface.create("sans-serif-light", Typeface.NORMAL);
         }

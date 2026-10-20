@@ -4,7 +4,8 @@ A small Apple TV-style home screen for Android TV, written for a Fastway / Netpl
 (SEI Robotics FW_SMART_4K_Box, Android TV 14, 2 GB RAM) and usable on other Android TV boxes.
 Plain Java, no AndroidX, no Gradle: about 90 KB.
 
-- Pitch-black background, greeting, thin clock and date in [Outfit](https://github.com/Outfitio/Outfit-Fonts).
+- Pitch-black background, greeting, thin clock and date in Google Sans Flex, with optical sizes so
+  the large clock gets display shapes and small labels get text shapes.
 - A five-app dock in a slightly lighter band, with the focused app's name in large type and a glow
   in a colour sampled from its banner.
 - Press **Down** for the full app grid (five columns). One translucent glass highlight springs from
@@ -66,3 +67,11 @@ adb shell settings delete secure enabled_accessibility_services
 adb shell cmd package set-home-activity --user 0 <stock.launcher/.Activity>
 adb uninstall com.clean.home
 ```
+
+## Font
+
+`assets/GoogleSansFlex-Latin.ttf` is [Google Sans Flex](https://github.com/googlefonts/googlesans-flex)
+trimmed with fonttools to keep the build small (3.9 MB down to 271 KB): roundness, slant and width
+pinned to their defaults, weight and optical size kept as variable axes, Latin characters only.
+SIL Open Font License (`assets/OFL.txt`); "Google Sans Flex" is a trademark of Google LLC
+(`assets/TRADEMARKS.md`), and this project is not affiliated with Google.

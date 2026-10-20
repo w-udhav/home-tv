@@ -38,7 +38,7 @@ public class ClockDream extends DreamService {
         setInteractive(false);
         setFullscreen(true);
 
-        Typeface thin = font(150), regular = font(350);
+        Typeface thin = font(200, 120), regular = font(350, 22);
         root = new FrameLayout(this);
         root.setBackgroundColor(0xFF000000);
 
@@ -82,10 +82,10 @@ public class ClockDream extends DreamService {
         return c;
     }
 
-    private Typeface font(int weight) {
+    private Typeface font(int weight, int opticalSize) {
         try {
-            return new Typeface.Builder(getAssets(), "Outfit.ttf")
-                    .setFontVariationSettings("'wght' " + weight).build();
+            return new Typeface.Builder(getAssets(), "GoogleSansFlex-Latin.ttf")
+                    .setFontVariationSettings("'wght' " + weight + ", 'opsz' " + opticalSize).build();
         } catch (RuntimeException ex) {
             return Typeface.create("sans-serif-thin", Typeface.NORMAL);
         }
