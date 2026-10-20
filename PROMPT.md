@@ -1,3 +1,9 @@
+> **This fork:** `launcher/` is a different, smaller launcher built for a Fastway / SEI set-top box
+> (see [launcher/README.md](launcher/README.md)), and [`remote/`](remote/) adds a phone remote.
+> Sections below about themes, the app library, launcher settings, `tools/theme.sh` and the Gradle
+> build describe the upstream [CleanYourTV](https://github.com/Gathin23/cleanyourtv) launcher, which
+> this fork no longer ships. The debloat tools and `examples/` lists work the same.
+
 # The prompt
 
 Paste this into Claude Code (or another coding assistant with shell access) on a computer that is

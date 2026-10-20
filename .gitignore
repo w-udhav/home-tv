@@ -14,3 +14,8 @@ backup/
 *.aab
 launcher/hs_err_pid*.log
 launcher/replay_pid*.log
+
+# The launcher build output and its per-machine signing key
+launcher/debug.jks
+# The phone remote: pairing code
+remote/.token

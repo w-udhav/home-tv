@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_key_service_label">Home button</string>
+    <string name="home_key_service_description">Sends the Home button to this home screen. The firmware hard-codes the stock launcher, so this is the only way to replace it without root.</string>
+    <string name="clock_dream_label">Black clock</string>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The five dock apps, left to right. Package names; missing ones are skipped. -->
+    <string-array name="dock_apps">
+        <item>com.google.android.youtube.tv</item>
+        <item>in.startv.hotstar</item>
+        <item>com.graymatrix.did</item>
+        <item>com.fastway.fastwaylivetv</item>
+        <item>com.sonyliv</item>
+    </string-array>
+
+    <!-- Listed under the Inputs pill, after any HDMI/AV inputs the box reports. -->
+    <string-array name="live_tv_apps">
+        <item>com.fastway.fastwaylivetv</item>
+        <item>com.showtimeapp</item>
+        <item>com.hinettvin</item>
+    </string-array>
+
+    <!-- Apps never shown in the grid. -->
+    <string-array name="hidden_apps">
+    </string-array>
+
+    <!-- Appended to the greeting ("Good evening, Name"). Leave empty for none. -->
+    <string name="greeting_name"></string>
+
+    <!-- How much to darken /sdcard/Android/data/com.clean.home/files/wallpaper.jpg (0-100). -->
+    <integer name="wallpaper_dim_percent">45</integer>
+</resources>
