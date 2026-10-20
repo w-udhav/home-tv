@@ -14,6 +14,8 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
@@ -42,6 +44,8 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.transition.ChangeBounds;
+import android.transition.TransitionManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -69,14 +73,14 @@ public class HomeActivity extends Activity {
     private static final int SIDE = 64, GAP = 24;
     private static final int TILE_W = (960 - 2 * SIDE - (COLS - 1) * GAP) / COLS, TILE_H = TILE_W * 9 / 16;
     private static final int BAND_H = TILE_H + 70, BAND_TOP = 506 - BAND_H, DOCK_Y = BAND_TOP + 22;
-    private static final int GRID_TOP = 560, ROW_H = TILE_H + 56, GRID_VIEW_Y = 48;
+    private static final int GRID_TOP = 518, ROW_H = TILE_H + 56, GRID_VIEW_Y = 48;
 
     private float dp;
     private Typeface thin, light, regular, medium;
     private FrameLayout content, tileLayer;
     private Glass glass;
     private TextView greeting, dockTitle, wifiPill, audioPill;
-    private View glow;
+    private View glow, sheet;
     private GradientDrawable glowShape;
     private LinearLayout pillBar, menu;
     private final List<TextView> pills = new ArrayList<>();
@@ -193,14 +197,6 @@ public class HomeActivity extends Activity {
     // ---------------------------------------------------------------- layout
 
     private void buildChrome() {
-        GradientDrawable band = new GradientDrawable();
-        band.setColor(0xFF111113);
-        band.setStroke(px(1), 0x14FFFFFF);
-        band.setCornerRadius(px(30));
-        View bandView = new View(this);
-        bandView.setBackground(band);
-        content.addView(bandView, at(SIDE - 24, BAND_TOP, TILE_W * COLS + GAP * (COLS - 1) + 48, BAND_H));
-
         glowShape = new GradientDrawable();
         glowShape.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         // The view is far larger than the radius so the gradient fades out before any edge.
@@ -209,6 +205,12 @@ public class HomeActivity extends Activity {
         glow = new View(this);
         glow.setBackground(glowShape);
         content.addView(glow, at(-240, -40, 1300, 760));
+
+        // tvOS-style glass sheet: holds the dock and the whole grid, so it fills the screen as you
+        // scroll down. Added after the glow so the glow shows through it.
+        sheet = new View(this);
+        sheet.setBackground(new GlassSheet(dp, 34, 0));
+        content.addView(sheet, at(24, BAND_TOP, 912, 540));
 
         dockTitle = text(light, 40, 0xF2FFFFFF);
         content.addView(dockTitle, at(SIDE, BAND_TOP - 68, 800, -2));
@@ -233,8 +235,8 @@ public class HomeActivity extends Activity {
 
         pillBar = new LinearLayout(this);
         pillBar.setOrientation(LinearLayout.HORIZONTAL);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, px(40), Gravity.TOP | Gravity.END);
-        lp.topMargin = px(44);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, px(44), Gravity.TOP | Gravity.END);
+        lp.topMargin = px(42);
         lp.rightMargin = px(SIDE);
         content.addView(pillBar, lp);
         pills.add(pill("Live TV", new PillIcon(PillIcon.TV, dp)));
@@ -242,44 +244,89 @@ public class HomeActivity extends Activity {
         pills.add(audioPill);
         wifiPill = pill("Wi-Fi", new PillIcon(PillIcon.WIFI, dp));
         pills.add(wifiPill);
-        pills.add(pill("Settings", null));
-        pillBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            if (zone == TOP) focusTop(topIdx, false);
-        });
+        pills.add(pill("Settings", new PillIcon(PillIcon.GEAR, dp)));
     }
 
-    private TextView pill(String label, Drawable icon) {
-        TextView t = text(medium, 15, 0xEBFFFFFF);
-        t.setText(label);
+    /** What a pill shows when it expands. */
+    private static final class PillState {
+        String label;
+        final PillIcon icon;
+        boolean open;
+
+        PillState(String label, PillIcon icon) {
+            this.label = label;
+            this.icon = icon;
+        }
+    }
+
+    private TextView pill(String label, PillIcon icon) {
+        TextView t = text(medium, 15, 0xFF000000);
+        t.setTag(new PillState(label, icon));
         t.setGravity(Gravity.CENTER_VERTICAL);
-        t.setPadding(px(18), 0, px(18), 0);
         t.setSingleLine();
         t.setEllipsize(TextUtils.TruncateAt.END);
-        t.setMaxWidth(px(176));    // long Wi-Fi or speaker names must not push into the clock
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x1FFFFFFF);
-        bg.setStroke(px(1), 0x24FFFFFF);
-        bg.setCornerRadius(px(20));
-        t.setBackground(bg);
-        if (icon != null) {
-            t.setCompoundDrawables(icon, null, null, null);
-            t.setCompoundDrawablePadding(px(8));
-        }
+        t.setMaxWidth(px(190));    // long Wi-Fi or speaker names must not push into the clock
+        t.setCompoundDrawables(icon, null, null, null);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -1);
-        if (!pills.isEmpty()) lp.leftMargin = px(10);
+        if (!pills.isEmpty()) lp.leftMargin = px(12);
         pillBar.addView(t, lp);
+        styleTopPill(t, false);
         return t;
+    }
+
+    /** Collapsed: a glass circle with the icon. Open: a white capsule with icon and label. */
+    private void styleTopPill(TextView t, boolean open) {
+        PillState st = (PillState) t.getTag();
+        st.open = open;
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(px(22));
+        if (open) {
+            bg.setColor(0xF5FFFFFF);
+            t.setText(st.label);
+            t.setPadding(px(16), 0, px(18), 0);
+            t.setCompoundDrawablePadding(px(8));
+            st.icon.setColor(0xFF000000);
+        } else {
+            bg.setColor(0x26FFFFFF);
+            bg.setStroke(px(1), 0x3DFFFFFF);
+            t.setText("");
+            int side = (44 - 16) / 2;
+            t.setPadding(px(side), 0, px(side), 0);
+            t.setCompoundDrawablePadding(0);
+            st.icon.setColor(0xF2FFFFFF);
+        }
+        t.setBackground(bg);
+    }
+
+    /** Opens pill i (or none for -1), animating the capsules' widths. */
+    private void openPill(int i) {
+        boolean changes = false;
+        for (int k = 0; k < pills.size(); k++) {
+            if (((PillState) pills.get(k).getTag()).open != (k == i)) changes = true;
+        }
+        if (!changes) return;
+        ChangeBounds grow = new ChangeBounds();
+        grow.setDuration(260);
+        grow.setInterpolator(new DecelerateInterpolator(2f));
+        grow.addTarget(pillBar);
+        for (TextView p : pills) grow.addTarget(p);
+        TransitionManager.beginDelayedTransition(content, grow);
+        for (int k = 0; k < pills.size(); k++) styleTopPill(pills.get(k), k == i);
+    }
+
+    private void setPillLabel(TextView pill, String label) {
+        PillState st = (PillState) pill.getTag();
+        if (label.equals(st.label)) return;
+        st.label = label;
+        if (st.open) pill.setText(label);
     }
 
     private void buildMenu() {
         menu = new LinearLayout(this);
         menu.setOrientation(LinearLayout.VERTICAL);
         menu.setPadding(px(8), px(8), px(8), px(8));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xF51C1C1E);
-        bg.setStroke(px(1), 0x2EFFFFFF);
-        bg.setCornerRadius(px(20));
-        menu.setBackground(bg);
+        // Glass like the dock sheet, over a darker base so the list stays readable over the dock.
+        menu.setBackground(new GlassSheet(dp, 22, 0xE01A1A1C));
         menu.setVisibility(View.GONE);
         content.addView(menu, at(0, 94, 280, -2));
     }
@@ -339,6 +386,7 @@ public class HomeActivity extends Activity {
         }
         int rows = (grid.size() + COLS - 1) / COLS;
         content.getLayoutParams().height = px(Math.max(540, GRID_TOP + rows * ROW_H + 540));
+        sheet.getLayoutParams().height = px(GRID_TOP + rows * ROW_H + 540 - BAND_TOP);
         content.requestLayout();
     }
 
@@ -431,10 +479,8 @@ public class HomeActivity extends Activity {
         setFocusedTile(null);
         scrollTo(0, animate);
         glow.animate().alpha(0.35f).setDuration(300).start();
-        TextView p = pills.get(i);
-        RectF r = rectOf(p);
-        r.inset(-px(3), -px(3));
-        glass.moveTo(r, r.height() / 2, animate);
+        openPill(i);
+        glass.hide();
     }
 
     private void focusDock(int i) {
@@ -448,6 +494,7 @@ public class HomeActivity extends Activity {
         setFocusedTile(t);
         scrollTo(0, animate);
         showDockTitle(t.app, animate);
+        openPill(-1);
         glow.animate().alpha(1f).setDuration(300).start();
         glass.moveTo(tileRect(t), px(15), animate);
     }
@@ -476,6 +523,7 @@ public class HomeActivity extends Activity {
         // The first two rows scroll as one so the row above stays visible as context.
         int row = i / COLS;
         scrollTo(GRID_TOP - GRID_VIEW_Y + Math.max(0, row - 1) * ROW_H, animate);
+        openPill(-1);
         glow.animate().alpha(0f).setDuration(300).start();
         glass.moveTo(tileRect(t), px(15), animate);
     }
@@ -652,7 +700,7 @@ public class HomeActivity extends Activity {
             }
             if (t == AudioDeviceInfo.TYPE_HDMI_ARC || t == AudioDeviceInfo.TYPE_HDMI_EARC) label = "Soundbar";
         }
-        if (!label.contentEquals(audioPill.getText())) audioPill.setText(label);
+        setPillLabel(audioPill, label);
     }
 
     private final AudioDeviceCallback audioCallback = new AudioDeviceCallback() {
@@ -668,7 +716,7 @@ public class HomeActivity extends Activity {
     };
 
     private void setNetworkLabel(String s) {
-        if (!s.contentEquals(wifiPill.getText())) wifiPill.setText(s);
+        setPillLabel(wifiPill, s);
     }
 
     private final ConnectivityManager.NetworkCallback netCallback =
@@ -750,7 +798,7 @@ public class HomeActivity extends Activity {
 
     /** Pill icons drawn to match the text: Wi-Fi arcs, a TV, a speaker. */
     private static final class PillIcon extends Drawable {
-        static final int WIFI = 0, TV = 1, SPEAKER = 2;
+        static final int WIFI = 0, TV = 1, SPEAKER = 2, GEAR = 3;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final int kind;
         private final float dp;
@@ -781,6 +829,15 @@ public class HomeActivity extends Activity {
             } else if (kind == TV) {
                 c.drawRoundRect(1 * dp, 1 * dp, w - 1 * dp, h - 4 * dp, 2 * dp, 2 * dp, p);
                 c.drawLine(w * .3f, h - 1 * dp, w * .7f, h - 1 * dp, p);
+            } else if (kind == GEAR) {
+                float cx = w / 2f, cy = h / 2f;
+                c.drawCircle(cx, cy, 2.6f * dp, p);
+                c.drawCircle(cx, cy, 5.2f * dp, p);
+                for (int k = 0; k < 8; k++) {
+                    double a = Math.PI / 4 * k;
+                    float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+                    c.drawLine(cx + cos * 5.6f * dp, cy + sin * 5.6f * dp, cx + cos * 7f * dp, cy + sin * 7f * dp, p);
+                }
             } else {
                 android.graphics.Path cone = new android.graphics.Path();
                 cone.moveTo(1.5f * dp, h * .36f);
@@ -799,6 +856,50 @@ public class HomeActivity extends Activity {
                     c.drawArc(cx - r, cy - r, cx + r, cy + r, -45, 90, false, p);
                 }
             }
+        }
+
+        @Override public void setAlpha(int a) { }
+        void setColor(int color) {
+            p.setColor(color);
+            invalidateSelf();
+        }
+
+        @Override public void setColorFilter(ColorFilter f) { }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
+    /** Frosted sheet: a faint vertical fill and a rim that is brightest along the top edge. */
+    private static final class GlassSheet extends Drawable {
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF r = new RectF();
+        private final Paint base = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final float dp, radius;
+
+        /** baseColor sits under the frost; 0 leaves the sheet fully see-through. */
+        GlassSheet(float dp, float radiusDp, int baseColor) {
+            this.dp = dp;
+            this.radius = radiusDp * dp;
+            base.setColor(baseColor);
+            rim.setStyle(Paint.Style.STROKE);
+            rim.setStrokeWidth(1.2f * dp);
+        }
+
+        @Override
+        protected void onBoundsChange(android.graphics.Rect b) {
+            fill.setShader(new LinearGradient(0, b.top, 0, b.top + 200 * dp,
+                    new int[]{0x2BFFFFFF, 0x14FFFFFF, 0x0DFFFFFF}, new float[]{0f, .45f, 1f}, Shader.TileMode.CLAMP));
+            rim.setShader(new LinearGradient(0, b.top, 0, b.top + 90 * dp,
+                    0x66FFFFFF, 0x0FFFFFFF, Shader.TileMode.CLAMP));
+        }
+
+        @Override
+        public void draw(Canvas c) {
+            r.set(getBounds());
+            r.inset(rim.getStrokeWidth() / 2, rim.getStrokeWidth() / 2);
+            if (base.getColor() != 0) c.drawRoundRect(r, radius, radius, base);
+            c.drawRoundRect(r, radius, radius, fill);
+            c.drawRoundRect(r, radius, radius, rim);
         }
 
         @Override public void setAlpha(int a) { }

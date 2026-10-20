@@ -2,15 +2,19 @@
 
 A small Apple TV-style home screen for Android TV, written for a Fastway / Netplus set-top box
 (SEI Robotics FW_SMART_4K_Box, Android TV 14, 2 GB RAM) and usable on other Android TV boxes.
-Plain Java, no AndroidX, no Gradle: about 90 KB.
+Plain Java, no AndroidX, no Gradle: about 180 KB.
 
 - Pitch-black background, greeting, thin clock and date in Google Sans Flex, with optical sizes so
   the large clock gets display shapes and small labels get text shapes.
-- A five-app dock in a slightly lighter band, with the focused app's name in large type and a glow
-  in a colour sampled from its banner.
-- Press **Down** for the full app grid (five columns). One translucent glass highlight springs from
-  tile to tile; the focused tile grows and shows its name.
-- Frosted pills top right:
+- tvOS-style glass: the dock and the whole app grid sit on one frosted sheet with a bright top
+  rim; the next row of apps peeks out under the dock, and the sheet fills the screen as you
+  scroll down. The focused dock app's name shows above it in large type, with a glow in a colour
+  sampled from its banner that shows through the glass.
+- App tiles look like tvOS icons: rounded corners, a gloss from above and a hairline rim. The
+  focused tile grows, lifts with a shadow and shows its name; one glass highlight springs between
+  tiles.
+- Pills top right are glass circles showing only an icon. The focused one opens into a white
+  capsule with its label, as on Apple TV:
   - **Live TV**: a menu of the live-TV apps (first one focused) plus the stock launcher, after any
     HDMI/AV inputs the device reports. A set-top box has none: its HDMI port is an output.
   - **Audio**: names the current output (a Bluetooth speaker or headphones by name, "Soundbar"

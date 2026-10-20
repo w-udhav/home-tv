@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -24,6 +25,7 @@ final class Tile extends FrameLayout {
     private final TextView label;
     private final int bannerHeight;
     private TextView name;
+    private float lift;
 
     Tile(Context c, App app, int w, int h, float dp, Typeface face) {
         super(c);
@@ -42,7 +44,7 @@ final class Tile extends FrameLayout {
             banner.setScaleType(ImageView.ScaleType.FIT_CENTER);
             banner.setPadding((int) (20 * dp), (int) (16 * dp), (int) (20 * dp), (int) (40 * dp));
         }
-        float radius = 12 * dp;
+        float radius = 16 * dp;
         banner.setOutlineProvider(new ViewOutlineProvider() {
             @Override
             public void getOutline(View v, Outline o) {
@@ -50,6 +52,13 @@ final class Tile extends FrameLayout {
             }
         });
         banner.setClipToOutline(true);
+        // Gloss: light from above, and a hairline rim, like a tvOS app icon.
+        GradientDrawable gloss = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x26FFFFFF, 0x00FFFFFF, 0x00000000});
+        gloss.setCornerRadius(radius);
+        gloss.setStroke(Math.max(1, Math.round(dp)), 0x1FFFFFFF);
+        banner.setForeground(gloss);
+        this.lift = 18 * dp;
         addView(banner, new LayoutParams(w, h));
         if (!app.isBanner) {
             // Icon-only apps get their name printed on the plate, like a banner would.
@@ -85,7 +94,8 @@ final class Tile extends FrameLayout {
     void setFocused(boolean focused) {
         float s = focused ? FOCUS_SCALE : 1f;
         DecelerateInterpolator ease = new DecelerateInterpolator(2f);
-        banner.animate().scaleX(s).scaleY(s).setDuration(240).setInterpolator(ease).start();
+        banner.animate().scaleX(s).scaleY(s).translationZ(focused ? lift : 0)
+                .setDuration(240).setInterpolator(ease).start();
         if (name != null) {
             // Scale with the plate around the plate's centre, not the name's own.
             float shift = (name.getTop() + name.getHeight() / 2f - bannerHeight / 2f) * (s - 1);

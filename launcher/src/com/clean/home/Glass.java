@@ -36,7 +36,13 @@ final class Glass extends View {
         stroke.setColor(0x66FFFFFF);
     }
 
+    /** Fades out; the next moveTo brings it back from where it was. */
+    void hide() {
+        animate().alpha(0f).setDuration(160).start();
+    }
+
     void moveTo(RectF target, float r, boolean animate) {
+        if (getAlpha() < 1f) animate().alpha(1f).setDuration(200).start();
         if (anim != null) anim.cancel();
         if (!animate || cur.isEmpty()) {
             cur.set(target);
