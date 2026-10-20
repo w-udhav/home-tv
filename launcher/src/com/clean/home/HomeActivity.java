@@ -206,11 +206,11 @@ public class HomeActivity extends Activity {
         glow.setBackground(glowShape);
         content.addView(glow, at(-240, -40, 1300, 760));
 
-        // tvOS-style glass sheet: holds the dock and the whole grid, so it fills the screen as you
-        // scroll down. Added after the glow so the glow shows through it.
+        // tvOS-style glass panel behind the dock only; the grid's first row peeks out below it.
+        // Added after the glow so the glow shows through it.
         sheet = new View(this);
         sheet.setBackground(new GlassSheet(dp, 34, 0));
-        content.addView(sheet, at(24, BAND_TOP, 912, 540));
+        content.addView(sheet, at(24, BAND_TOP, 912, BAND_H));
 
         dockTitle = text(light, 40, 0xF2FFFFFF);
         content.addView(dockTitle, at(SIDE, BAND_TOP - 68, 800, -2));
@@ -386,7 +386,6 @@ public class HomeActivity extends Activity {
         }
         int rows = (grid.size() + COLS - 1) / COLS;
         content.getLayoutParams().height = px(Math.max(540, GRID_TOP + rows * ROW_H + 540));
-        sheet.getLayoutParams().height = px(GRID_TOP + rows * ROW_H + 540 - BAND_TOP);
         content.requestLayout();
     }
 
@@ -481,6 +480,7 @@ public class HomeActivity extends Activity {
         glow.animate().alpha(0.35f).setDuration(300).start();
         openPill(i);
         glass.hide();
+        sheet.animate().alpha(1f).setDuration(300).start();
     }
 
     private void focusDock(int i) {
@@ -495,6 +495,7 @@ public class HomeActivity extends Activity {
         scrollTo(0, animate);
         showDockTitle(t.app, animate);
         openPill(-1);
+        sheet.animate().alpha(1f).setDuration(300).start();
         glow.animate().alpha(1f).setDuration(300).start();
         glass.moveTo(tileRect(t), px(15), animate);
     }
@@ -524,6 +525,7 @@ public class HomeActivity extends Activity {
         int row = i / COLS;
         scrollTo(GRID_TOP - GRID_VIEW_Y + Math.max(0, row - 1) * ROW_H, animate);
         openPill(-1);
+        sheet.animate().alpha(0f).setDuration(300).start();   // its bottom edge would hang over the grid
         glow.animate().alpha(0f).setDuration(300).start();
         glass.moveTo(tileRect(t), px(15), animate);
     }
