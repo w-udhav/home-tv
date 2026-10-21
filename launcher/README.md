@@ -6,13 +6,13 @@ Plain Java, no AndroidX, no Gradle: about 180 KB.
 
 - Pitch-black background, greeting, thin clock and date in Google Sans Flex, with optical sizes so
   the large clock gets display shapes and small labels get text shapes.
-- tvOS-style glass: the dock sits on a frosted panel with a bright top rim, and the first row of
-  the app grid peeks out below it. The focused dock app's name shows above it in large type, with a glow in a colour
-  sampled from its banner that shows through the glass.
-- App tiles look like tvOS icons: rounded corners, a gloss from above and a hairline rim. The
-  focused tile grows, lifts with a shadow and shows its name; one glass highlight springs between
-  tiles.
-- Pills top right are glass circles showing only an icon. The focused one opens into a white
+- tvOS-style glass: the dock sits on a frosted panel with a faint line of light along its top
+  edge, and the first row of the app grid peeks out below it. The focused dock app's name shows
+  above it in large type, with a glow in a colour sampled from its banner.
+- App tiles look like tvOS icons: rounded corners and a soft gloss from above, with no border.
+  Focus is shown the tvOS way, without a ring: the focused tile grows, lifts with a shadow,
+  catches a soft sheen and shows its name.
+- Pills top right are borderless glass circles showing only an icon. The focused one opens into a white
   capsule with its label, as on Apple TV:
   - **Live TV**: a menu of the live-TV apps (first one focused) plus the stock launcher, after any
     HDMI/AV inputs the device reports. A set-top box has none: its HDMI port is an output.
@@ -47,7 +47,7 @@ Edit [`res/values/config.xml`](res/values/config.xml) and rebuild:
 
 | Setting | What it does |
 |---|---|
-| `dock_apps` | Package names for the dock, left to right (up to five) |
+| `dock_apps` | Package names for the dock, left to right (up to five; now YouTube, JioHotstar, Vzy, Fastway Live TV, Sony LIV) |
 | `live_tv_apps` | Apps listed under the Live TV pill |
 | `audio_settings_activity` | Screen the audio pill opens; empty for the standard Bluetooth settings |
 | `hidden_apps` | Apps never shown in the grid |
